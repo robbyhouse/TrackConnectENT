@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Suivi Connexions ENT</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --bg:#f5f6f4;
+    --surface:#ffffff;
+    --surface-alt:#eef1f2;
+    --border:#dde2e3;
+    --border-strong:#c7cdd0;
+    --text:#1b201f;
+    --text-muted:#5d6866;
+    --text-faint:#8a9391;
+    --accent:#2f5d52;
+    --accent-strong:#234942;
+    --accent-contrast:#f4faf7;
+    --accent-tint:#e2ece8;
+    --warn:#a5540a;
+    --warn-strong:#d9790f;
+    --warn-strong-contrast:#2b1400;
+    --warn-bg:#fbe6cc;
+    --warn-border:#e3a75c;
+    --chip-bg:#eef1f2;
+    --chip-text:#4a5452;
+    --shadow: 0 1px 2px rgba(20,30,25,0.06), 0 6px 20px rgba(20,30,25,0.06);
+    --radius-s:6px;
+    --radius-m:10px;
+    --radius-l:16px;
+    font-family:"Public Sans", system-ui, -apple-system, sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#121614;
+      --surface:#181e1b;
+      --surface-alt:#1f2623;
+      --border:#2b332f;
+      --border-strong:#3a443f;
+      --text:#e9ece9;
+      --text-muted:#a4aead;
+      --text-faint:#71807b;
+      --accent:#6fb39d;
+      --accent-strong:#8bc7b3;
+      --accent-contrast:#0c1613;
+      --accent-tint:#1e2b26;
+      --warn:#f0a35c;
+      --warn-strong:#e0902f;
+      --warn-strong-contrast:#1d1002;
+      --warn-bg:#3a2a10;
+      --warn-border:#7a561f;
+      --chip-bg:#242c29;
+      --chip-text:#c3cbc8;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#121614;
+    --surface:#181e1b;
+    --surface-alt:#1f2623;
+    --border:#2b332f;
+    --border-strong:#3a443f;
+    --text:#e9ece9;
+    --text-muted:#a4aead;
+    --text-faint:#71807b;
+    --accent:#6fb39d;
+    --accent-strong:#8bc7b3;
+    --accent-contrast:#0c1613;
+    --accent-tint:#1e2b26;
+    --warn:#f0a35c;
+    --warn-strong:#e0902f;
+    --warn-strong-contrast:#1d1002;
+    --warn-bg:#3a2a10;
+    --warn-border:#7a561f;
+    --chip-bg:#242c29;
+    --chip-text:#c3cbc8;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+
+  html{color-scheme:light dark;}
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    padding-inline:16px;
+    padding-block:28px 48px;
+    display:flex;
+    justify-content:center;
+  }
+  .wrap{width:100%;max-width:1180px;display:flex;flex-direction:column;gap:20px;}
+
+  a{color:var(--accent);}
+  ::selection{background:var(--accent-tint);}
+
+  button, input, select{font-family:inherit;font-size:14px;color:var(--text);}
+  input:focus-visible, select:focus-visible, button:focus-visible, [tabindex]:focus-visible{
+    outline:2px solid var(--accent); outline-offset:2px;
+  }
+
+  /* ---------- header ---------- */
+  header{display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:14px;}
+  .titleblock h1{
+    font-family:"Fraunces", Georgia, serif;
+    font-weight:600;
+    font-size:clamp(26px, 4vw, 34px);
+    line-height:1.1;
+    margin:0 0 6px 0;
+    letter-spacing:-0.01em;
+    text-wrap:balance;
+  }
+  .titleblock p{margin:0; color:var(--text-muted); font-size:14.5px; max-width:52ch;}
+  .source-pill{
+    display:inline-flex; align-items:center; gap:7px;
+    background:var(--surface); border:1px solid var(--border); border-radius:999px;
+    padding:7px 14px; font-size:12.5px; color:var(--text-muted); box-shadow:var(--shadow);
+    white-space:nowrap;
+  }
+  .source-pill strong{color:var(--text); font-weight:600;}
+  .source-dot{width:7px;height:7px;border-radius:50%;background:var(--accent); flex:none;}
+
+  /* ---------- card ---------- */
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius-l);
+    box-shadow:var(--shadow);
+  }
+
+  /* ---------- controls ---------- */
+  .controls{padding:18px 20px;}
+  .controls-grid{
+    display:grid;
+    grid-template-columns: 1.3fr 1fr 1fr 1fr;
+    gap:16px;
+  }
+  @media (max-width:760px){ .controls-grid{grid-template-columns:1fr 1fr;} }
+  @media (max-width:460px){ .controls-grid{grid-template-columns:1fr;} }
+
+  .field{display:flex; flex-direction:column; gap:6px; min-width:0;}
+  .field label{
+    font-size:11.5px; font-weight:600; color:var(--text-muted);
+    text-transform:uppercase; letter-spacing:.05em;
+  }
+  .field .hint{font-size:11.5px; color:var(--text-faint); font-weight:400; text-transform:none; letter-spacing:0;}
+
+  .file-drop{
+    border:1.5px dashed var(--border-strong); border-radius:var(--radius-m);
+    padding:10px 12px; display:flex; align-items:center; gap:10px;
+    cursor:pointer; background:var(--surface-alt); transition:border-color .15s, background .15s;
+  }
+  .file-drop:hover, .file-drop.dragover{border-color:var(--accent); background:var(--accent-tint);}
+  .file-drop svg{flex:none; color:var(--accent);}
+  .file-drop .fd-text{display:flex; flex-direction:column; min-width:0;}
+  .file-drop .fd-text b{font-size:13px; font-weight:600;}
+  .file-drop .fd-text span{font-size:11.5px; color:var(--text-faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .file-drop input[type=file]{display:none;}
+
+  input[type=date], input[type=number], input[type=text], select{
+    border:1px solid var(--border-strong); background:var(--surface);
+    border-radius:var(--radius-s); padding:8px 10px; color:var(--text);
+    height:38px;
+  }
+  input[type=number]{font-variant-numeric:tabular-nums;}
+
+  .num-input{display:flex; align-items:center; gap:8px;}
+  .num-input input{width:100%;}
+  .num-input .unit{font-size:12.5px; color:var(--text-faint); white-space:nowrap;}
+
+  /* ---------- stats ---------- */
+  .stats{display:grid; grid-template-columns:repeat(4, 1fr); gap:12px;}
+  @media (max-width:760px){ .stats{grid-template-columns:1fr 1fr;} }
+  .stat{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-m);
+    padding:14px 16px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:3px;
+  }
+  .stat .n{font-size:26px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-0.01em;}
+  .stat .n.flag{color:var(--warn);}
+  .stat .l{font-size:12px; color:var(--text-muted); font-weight:500;}
+  .stat .sub{font-size:11.5px; color:var(--text-faint);}
+
+  /* ---------- toolbar ---------- */
+  .toolbar{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:14px 18px;
+  }
+  .toolbar .search{position:relative; flex:1 1 220px; min-width:160px;}
+  .toolbar .search svg{position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-faint);}
+  .toolbar .search input{width:100%; padding-left:32px;}
+  .toolbar select{min-width:120px;}
+  .toggle{
+    display:flex; align-items:center; gap:7px; font-size:13px; color:var(--text-muted);
+    cursor:pointer; user-select:none; white-space:nowrap;
+  }
+  .toggle input{width:15px; height:15px; accent-color:var(--warn-strong); cursor:pointer;}
+  .spacer{flex:1;}
+
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; border-radius:var(--radius-s);
+    padding:9px 14px; font-size:13.5px; font-weight:600; cursor:pointer; border:1px solid transparent;
+    white-space:nowrap; transition:filter .12s, background .12s;
+  }
+  .btn:hover{filter:brightness(0.96);}
+  .btn:active{filter:brightness(0.9);}
+  .btn-primary{background:var(--accent); color:var(--accent-contrast);}
+  .btn-outline{background:var(--surface); color:var(--text); border-color:var(--border-strong);}
+  .btn:disabled{opacity:.5; cursor:not-allowed; filter:none;}
+
+  /* ---------- table ---------- */
+  .table-scroll{overflow-x:auto; border-top:1px solid var(--border);}
+  table{width:100%; border-collapse:collapse; font-size:13px; min-width:980px;}
+  thead th{
+    position:sticky; top:0; background:var(--surface-alt); text-align:left;
+    padding:10px 12px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em;
+    color:var(--text-muted); border-bottom:1px solid var(--border); white-space:nowrap; z-index:1;
+  }
+  tbody td{
+    padding:9px 12px; border-bottom:1px solid var(--border); vertical-align:top;
+    color:var(--text);
+  }
+  tbody tr.flagged td{background:var(--warn-bg); border-bottom-color:var(--warn-border);}
+  tbody tr.flagged td:first-child{box-shadow:inset 3px 0 0 var(--warn-strong);}
+  tbody tr:not(.flagged):hover td{background:var(--surface-alt);}
+  td.num{font-variant-numeric:tabular-nums; color:var(--text-muted); white-space:nowrap;}
+  td.wrap-cell{max-width:260px; white-space:normal;}
+  .empty-row td{padding:30px 12px; text-align:center; color:var(--text-faint);}
+
+  .type-chip{
+    display:inline-block; padding:2px 8px; border-radius:999px; font-size:11.5px; font-weight:600;
+    background:var(--chip-bg); color:var(--chip-text); white-space:nowrap;
+  }
+  .suivi-chip{
+    display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:20px;
+    border-radius:6px; font-size:12px; font-weight:700; font-variant-numeric:tabular-nums;
+    background:var(--warn-strong); color:var(--warn-strong-contrast);
+  }
+  .dash{color:var(--text-faint);}
+
+  /* ---------- rules disclosure ---------- */
+  details.rules{padding:2px 4px;}
+  details.rules summary{
+    cursor:pointer; list-style:none; display:flex; align-items:center; gap:7px;
+    font-size:13px; font-weight:600; color:var(--text-muted); padding:12px 16px;
+  }
+  details.rules summary::-webkit-details-marker{display:none;}
+  details.rules summary .chev{transition:transform .15s; flex:none;}
+  details.rules[open] summary .chev{transform:rotate(90deg);}
+  .rules-body{padding:0 20px 18px 20px; font-size:13px; color:var(--text-muted); line-height:1.6;}
+  .rules-body ul{margin:8px 0; padding-left:20px;}
+  .rules-body li{margin:4px 0;}
+  .rules-body code{background:var(--surface-alt); padding:1px 5px; border-radius:4px; font-size:12px;}
+
+  footer{display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:12px; color:var(--text-faint); padding:2px 4px;}
+
+  /* ---------- toast ---------- */
+  #toast{
+    position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(12px);
+    background:var(--text); color:var(--bg); padding:10px 18px; border-radius:999px;
+    font-size:13px; font-weight:500; box-shadow:var(--shadow); opacity:0; pointer-events:none;
+    transition:opacity .18s, transform .18s; z-index:20; max-width:90vw; text-align:center;
+  }
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header>
+    <div class="titleblock">
+      <h1>Suivi des connexions ENT</h1>
+      <p>Repère en un coup d'œil les comptes élèves et parents inactifs, à partir d'un export ENT.</p>
+    </div>
+    <div class="source-pill" id="sourcePill">
+      <span class="source-dot"></span>
+      <span>Import initial&nbsp;: <strong id="sourceName">20260910_exportENT_301Anonyme.xlsx</strong></span>
+    </div>
+  </header>
+
+  <div class="card controls">
+    <div class="controls-grid">
+      <div class="field">
+        <label for="fileInput">Charger un export ENT</label>
+        <label class="file-drop" id="fileDrop" for="fileInput">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+          <span class="fd-text">
+            <b>Déposer ou choisir un .xlsx / .csv</b>
+            <span id="fileDropSub">remplace les données actuelles</span>
+          </span>
+        </label>
+        <input type="file" id="fileInput" accept=".xlsx,.csv,text/csv">
+      </div>
+      <div class="field">
+        <label for="refDate">Date d'extraction du fichier</label>
+        <input type="date" id="refDate">
+        <span class="hint">sert de référence pour calculer l'ancienneté</span>
+      </div>
+      <div class="field">
+        <label for="thEleve">Seuil d'alerte — élèves</label>
+        <div class="num-input"><input type="number" id="thEleve" min="1" step="1"><span class="unit">jours</span></div>
+      </div>
+      <div class="field">
+        <label for="thParent">Seuil d'alerte — parents</label>
+        <div class="num-input"><input type="number" id="thParent" min="1" step="1"><span class="unit">jours</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="n" id="statTotal">0</div><div class="l">Lignes au total</div><div class="sub" id="statTotalSub">&nbsp;</div></div>
+    <div class="stat"><div class="n flag" id="statFlag">0</div><div class="l">À suivre</div><div class="sub" id="statFlagSub">&nbsp;</div></div>
+    <div class="stat"><div class="n" id="statEleve">0</div><div class="l">Élèves à suivre</div><div class="sub" id="statEleveSub">&nbsp;</div></div>
+    <div class="stat"><div class="n" id="statParent">0</div><div class="l">Parents à suivre</div><div class="sub" id="statParentSub">&nbsp;</div></div>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <div class="search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" id="search" placeholder="Rechercher un nom…">
+      </div>
+      <select id="classeFilter"><option value="">Toutes les classes</option></select>
+      <label class="toggle"><input type="checkbox" id="onlyFlagged"> À suivre uniquement</label>
+      <div class="spacer"></div>
+      <button class="btn btn-outline" id="btnExportClasse">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Export par classe (.zip)
+      </button>
+      <button class="btn btn-primary" id="btnExportAll">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v13m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
+        Export complet (.xlsx)
+      </button>
+    </div>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th><th>Nom</th><th>Prénom</th><th>Classes</th>
+            <th>Enfants</th><th>Parents</th><th>Dernière connexion</th>
+            <th>Ancienneté</th><th>Suivi</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <details class="rules">
+      <summary><svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 5l7 7-7 7"/></svg>Comment la colonne « Suivi » est calculée</summary>
+      <div class="rules-body">
+        <p><strong>Élèves</strong> — un élève passe « à suivre » (Suivi&nbsp;=&nbsp;1) si sa dernière connexion date de plus du <em>seuil élèves</em> ci-dessus, ou s'il ne s'est jamais connecté.</p>
+        <p><strong>Parents</strong> — les enfants d'un même foyer sont rapprochés via la colonne <code>Enfants</code> :</p>
+        <ul>
+          <li>Si un enfant n'a <strong>qu'un seul parent</strong> renseigné dans l'export et que ce parent dépasse le <em>seuil parents</em> (ou ne s'est jamais connecté) → ce parent passe à suivre.</li>
+          <li>Si un enfant a <strong>deux parents</strong> (ou plus) renseignés, ils passent tous à suivre seulement si <strong>tous</strong> dépassent le seuil (ou ne se sont jamais connectés) — un seul parent actif suffit à ne pas déclencher l'alerte.</li>
+        </ul>
+        <p>La date de référence pour ces calculs est la <strong>date d'extraction</strong> du fichier, réglable ci-dessus — pas la date du jour.</p>
+      </div>
+    </details>
+  </div>
+
+  <footer>
+    <span>Traitement 100&nbsp;% local au navigateur — aucune donnée n'est envoyée à un serveur.</span>
+    <span id="footRefDate"></span>
+  </footer>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var SAMPLE_DATA = [{"type": "Parent", "nom": "DITRZKHITE", "prenom": "DrTRZmTRZne", "classes": "605, 302, 301", "enfants": "TRZdTRZmTRZ DITRZKHITE, TRZwTRZ DITRZKHITE, ThiouTRTRZlo DITRZKHITE, RokhyTRZ DITRZKHITE", "parents": "", "conn": null}, {"type": "Parent", "nom": "KOFFI", "prenom": "Omon Roseline", "classes": "301", "enfants": "TRZriTRZl TRZNTRZNI", "parents": "", "conn": "2026-09-03T16:45:00"}, {"type": "Parent", "nom": "MICHEL", "prenom": "MorgTRZne", "classes": "301", "enfants": "TRZrmTRZnd RENTRZULT", "parents": "", "conn": "2026-09-15T08:40:00"}, {"type": "Parent", "nom": "RENTRZULT", "prenom": "DTRZvid", "classes": "301", "enfants": "TRZrmTRZnd RENTRZULT", "parents": "", "conn": "2021-09-21T11:03:00"}, {"type": "Parent", "nom": "LESOURD", "prenom": "Emilie", "classes": "303, 301", "enfants": "TRZxel VTRZIRELLES, MTRZrgTRZux VTRZIRELLES", "parents": "", "conn": "2026-09-15T14:20:00"}, {"type": "Parent", "nom": "VTRZIRELLES", "prenom": "SylvTRZin", "classes": "303, 301", "enfants": "TRZxel VTRZIRELLES, MTRZrgTRZux VTRZIRELLES", "parents": "", "conn": "2024-12-18T11:19:00"}, {"type": "Parent", "nom": "PTRZCKTRZ", "prenom": "Georges", "classes": "301", "enfants": "DéTRorTRZh PTRZCKTRZ", "parents": "", "conn": "2025-11-26T15:10:00"}, {"type": "Parent", "nom": "FERNTRZNDES VEIGTRZ", "prenom": "OrginitTRZ", "classes": "301", "enfants": "EliTRZne FERNTRZNDES DE TRZLMEIDTRZ", "parents": "", "conn": "2026-09-11T12:42:00"}, {"type": "Parent", "nom": "LTRZNDZI", "prenom": "JETRZNNE NTRZtTRZchTRZ", "classes": "301", "enfants": "Florence FEDOU", "parents": "", "conn": "2026-09-16T17:05:00"}, {"type": "Parent", "nom": "FEDOU", "prenom": "StéphTRZne", "classes": "301", "enfants": "Florence FEDOU", "parents": "", "conn": null}, {"type": "Parent", "nom": "ZITOUNI", "prenom": "TRZminTRZ", "classes": "301", "enfants": "Hichem ZITOUNI", "parents": "", "conn": null}, {"type": "Parent", "nom": "ZITOUNI", "prenom": "Toufik", "classes": "301", "enfants": "Hichem ZITOUNI", "parents": "", "conn": null}, {"type": "Parent", "nom": "TRENTROUJEMTRZTRZ", "prenom": "LTRZmyTRZTRZ", "classes": "502, 301", "enfants": "IyTRZd TRENTROUJEMTRZTRZ, TRZssile TTRZTRTRZCHE", "parents": "", "conn": "2026-09-16T10:52:00"}, {"type": "Parent", "nom": "TRENTROUJEMTRZTRZ", "prenom": "HichTRZm", "classes": "502, 301", "enfants": "IyTRZd TRENTROUJEMTRZTRZ, TRZssile TTRZTRTRZCHE", "parents": "", "conn": null}, {"type": "Parent", "nom": "JTRZRTRZY", "prenom": "STRZrTRZh", "classes": "301", "enfants": "KTRZïs SITRTRZCHIR JTRZRTRZY", "parents": "", "conn": "2026-09-16T09:12:00"}, {"type": "Parent", "nom": "HUCHET", "prenom": "ThomTRZs", "classes": "301", "enfants": "Lenny HUCHET", "parents": "", "conn": "2026-09-14T14:01:00"}, {"type": "Parent", "nom": "LUNTRZ", "prenom": "PTRZuline", "classes": "301", "enfants": "Lenny HUCHET", "parents": "", "conn": "2026-09-16T09:33:00"}, {"type": "Parent", "nom": "CHTRZOUCH", "prenom": "Ymen", "classes": "301", "enfants": "LinTRZ CHTRZOUCH", "parents": "", "conn": "2026-06-12T16:12:00"}, {"type": "Parent", "nom": "CHTRZOUCH", "prenom": "MohTRZmed-NidhTRZl", "classes": "301", "enfants": "LinTRZ CHTRZOUCH", "parents": "", "conn": null}, {"type": "Parent", "nom": "GTRZRY", "prenom": "CTRZmille", "classes": "301", "enfants": "Lou-TRZnne GTRZRY", "parents": "", "conn": "2026-09-11T07:10:00"}, {"type": "Parent", "nom": "GTRZRY", "prenom": "LisciTRZ", "classes": "301", "enfants": "Lou-TRZnne GTRZRY", "parents": "", "conn": "2026-09-15T05:27:00"}, {"type": "Parent", "nom": "DIERICKX", "prenom": "Christelle", "classes": "301", "enfants": "LunTRZ FILTRZINE", "parents": "", "conn": "2026-09-14T11:13:00"}, {"type": "Parent", "nom": "FILTRZINE", "prenom": "Vincent", "classes": "301", "enfants": "LunTRZ FILTRZINE", "parents": "", "conn": null}, {"type": "Parent", "nom": "OTRTRZIH", "prenom": "ZTRZynTRZ", "classes": "505, 301", "enfants": "LynTRZ CHERROUK, TRZnis CHERROUK", "parents": "", "conn": "2026-09-16T10:41:00"}, {"type": "Parent", "nom": "CHERROUK", "prenom": "YTRZssine", "classes": "505, 301", "enfants": "LynTRZ CHERROUK, TRZnis CHERROUK", "parents": "", "conn": null}, {"type": "Parent", "nom": "RITRZHI EL IDRISSI", "prenom": "LeilTRZ", "classes": "301", "enfants": "MTRZnel RITRZHI EL IDRISSI", "parents": "", "conn": "2026-09-15T13:40:00"}, {"type": "Parent", "nom": "RITRZHI EL IDRISSI", "prenom": "YTRZssine", "classes": "301", "enfants": "MTRZnel RITRZHI EL IDRISSI", "parents": "", "conn": null}, {"type": "Parent", "nom": "RTRZD", "prenom": "TRZdeline", "classes": "604, 301", "enfants": "MTRZryline RTRZD, Eléonore RTRZD", "parents": "", "conn": "2026-09-16T16:51:00"}, {"type": "Parent", "nom": "RTRZD", "prenom": "ChTRZrTRel", "classes": "604, 301", "enfants": "MTRZryline RTRZD, Eléonore RTRZD", "parents": "", "conn": "2025-10-16T18:31:00"}, {"type": "Parent", "nom": "RTRZTRTRZRIOELISOTRZ", "prenom": "NTRZly", "classes": "301", "enfants": "MihTRZjTRZ RTRZTRTRZRIOELISOTRZ", "parents": "", "conn": "2026-07-04T06:21:00"}, {"type": "Parent", "nom": "KINKTRZDI KTRZTRUIKU", "prenom": "Elysee", "classes": "301", "enfants": "MirTRZdi MTRZMPUNU", "parents": "", "conn": null}, {"type": "Parent", "nom": "KHTRZLIFI", "prenom": "IkrTRZm", "classes": "505, 301", "enfants": "MohTRZmed TRZOUIDTRZ, LoujTRZin TRZOUIDTRZ", "parents": "", "conn": "2026-03-31T09:47:00"}, {"type": "Parent", "nom": "LITRDRI", "prenom": "DTRZlil", "classes": "301", "enfants": "MohTRZmed LITRDRI", "parents": "", "conn": "2026-02-03T05:32:00"}, {"type": "Parent", "nom": "LITRDRI", "prenom": "WTRZssilTRZ", "classes": "301", "enfants": "MohTRZmed LITRDRI", "parents": "", "conn": "2026-06-23T02:32:00"}, {"type": "Parent", "nom": "MOHTRZMMEDI", "prenom": "TRZTRdelhTRZkim", "classes": "402, 301", "enfants": "MohTRZmed-TRZyouTR MOHTRZMMEDI, Sirine MOHTRZMMEDI", "parents": "", "conn": "2026-06-21T20:56:00"}, {"type": "Parent", "nom": "MOHTRZMMEDI", "prenom": "WTRZfTRZ", "classes": "402, 301", "enfants": "MohTRZmed-TRZyouTR MOHTRZMMEDI, Sirine MOHTRZMMEDI", "parents": "", "conn": "2026-09-16T17:11:00"}, {"type": "Parent", "nom": "TRITRZNY NKENGUE", "prenom": "SylviTRZ", "classes": "602, 301", "enfants": "NTRZthTRZn PTRZCKTRZ, DéTRorTRZh PTRZCKTRZ", "parents": "", "conn": "2026-09-09T03:55:00"}, {"type": "Parent", "nom": "DTRZ CONCEICTRZO PEREIRTRZ LOPES", "prenom": "IneidTRZ", "classes": "301", "enfants": "Nedilson LOPES TRORGES", "parents": "", "conn": "2026-09-16T16:08:00"}, {"type": "Parent", "nom": "CTRZRDOSO TRORGES", "prenom": "TRZdilson", "classes": "301", "enfants": "Nedilson LOPES TRORGES", "parents": "", "conn": null}, {"type": "Parent", "nom": "TRZSSTRZNTRZLY", "prenom": "ShTRZine", "classes": "301", "enfants": "RoTRZn TRZSSTRZNTRZLY", "parents": "", "conn": "2026-01-09T07:51:00"}, {"type": "Parent", "nom": "TRZSSTRZNTRZLY", "prenom": "KTRZrim Idris", "classes": "301", "enfants": "RoTRZn TRZSSTRZNTRZLY", "parents": "", "conn": null}, {"type": "Parent", "nom": "STRZTR STRZTR", "prenom": "ThomTRZs", "classes": "301", "enfants": "RosTRZline STRZTR NGUM", "parents": "", "conn": null}, {"type": "Parent", "nom": "ZOM MEZTRZNG", "prenom": "EvTRZngeline", "classes": "301", "enfants": "RosTRZline STRZTR NGUM", "parents": "", "conn": null}, {"type": "Parent", "nom": "TRENKHEDDTRZ", "prenom": "HTRZfsTRZ", "classes": "301", "enfants": "SelsTRZTRilTRZ TRZLLOUCHE", "parents": "", "conn": "2026-09-16T10:26:00"}, {"type": "Parent", "nom": "TRZLLOUCHE", "prenom": "TRZTRdelkrim", "classes": "301", "enfants": "SelsTRZTRilTRZ TRZLLOUCHE", "parents": "", "conn": null}, {"type": "Parent", "nom": "TRTRZH", "prenom": "FTRZtoumTRZtTRZ", "classes": "301", "enfants": "SouhTRZdou TRTRZH", "parents": "", "conn": "2025-04-02T16:56:00"}, {"type": "Parent", "nom": "TRTRZH", "prenom": "MTRZmTRZdou", "classes": "301", "enfants": "SouhTRZdou TRTRZH", "parents": "", "conn": "2026-07-01T05:13:00"}, {"type": "Parent", "nom": "DITRZKHITE", "prenom": "FTRZtimTRZtTRZ", "classes": "302, 301", "enfants": "ThiouTRTRZlo DITRZKHITE, RokhyTRZ DITRZKHITE", "parents": "", "conn": "2025-01-17T10:25:00"}, {"type": "Parent", "nom": "RTRZTRTRZRIOELISOTRZ", "prenom": "FTRZniry", "classes": "602, 301", "enfants": "TiTRZry RTRZTRTRZRIOELISOTRZ, MihTRZjTRZ RTRZTRTRZRIOELISOTRZ", "parents": "", "conn": "2026-09-08T17:03:00"}, {"type": "Parent", "nom": "VTRZCHEZ", "prenom": "ChTRZrlotte", "classes": "301", "enfants": "Tom QUINQUENEL", "parents": "", "conn": "2026-09-16T10:58:00"}, {"type": "Parent", "nom": "QUINQUENEL", "prenom": "JohTRZnn", "classes": "301", "enfants": "Tom QUINQUENEL", "parents": "", "conn": null}, {"type": "Parent", "nom": "LTRZUER", "prenom": "WTRZhiTRTRZ", "classes": "301", "enfants": "Wissem LTRZUER", "parents": "", "conn": "2026-09-16T15:28:00"}, {"type": "Parent", "nom": "LTRZUER", "prenom": "StéphTRZne", "classes": "301", "enfants": "Wissem LTRZUER", "parents": "", "conn": null}, {"type": "Parent", "nom": "TRENTERKI", "prenom": "TRoudjemTRZTRZ", "classes": "606, 301", "enfants": "Youssef TRENTERKI, Younes TRENTERKI", "parents": "", "conn": "2026-09-16T14:20:00"}, {"type": "Parent", "nom": "TRENTERKI", "prenom": "NTRZdirTRZ", "classes": "606, 301", "enfants": "Youssef TRENTERKI, Younes TRENTERKI", "parents": "", "conn": "2025-09-22T20:35:00"}, {"type": "Élève", "nom": "TRZLLOUCHE", "prenom": "SelsTRZTRilTRZ", "classes": "301", "enfants": "", "parents": "HTRZfsTRZ TRENKHEDDTRZ, TRZTRdelkrim TRZLLOUCHE", "conn": "2026-09-16T15:13:00"}, {"type": "Élève", "nom": "TRZNTRZNI", "prenom": "TRZriTRZl", "classes": "301", "enfants": "", "parents": "Omon Roseline KOFFI", "conn": "2026-09-16T17:29:00"}, {"type": "Élève", "nom": "TRZOUIDTRZ", "prenom": "LoujTRZin", "classes": "301", "enfants": "", "parents": "IkrTRZm KHTRZLIFI", "conn": "2026-09-16T14:17:00"}, {"type": "Élève", "nom": "TRZSSTRZNTRZLY", "prenom": "RoTRZn", "classes": "301", "enfants": "", "parents": "KTRZrim Idris TRZSSTRZNTRZLY, ShTRZine TRZSSTRZNTRZLY", "conn": "2026-09-16T15:56:00"}, {"type": "Élève", "nom": "TRTRZH", "prenom": "SouhTRZdou", "classes": "301", "enfants": "", "parents": "MTRZmTRZdou TRTRZH, FTRZtoumTRZtTRZ TRTRZH", "conn": "2026-09-16T16:49:00"}, {"type": "Élève", "nom": "TRENTERKI", "prenom": "Younes", "classes": "301", "enfants": "", "parents": "TRoudjemTRZTRZ TRENTERKI, NTRZdirTRZ TRENTERKI", "conn": "2026-09-16T05:38:00"}, {"type": "Élève", "nom": "CHTRZOUCH", "prenom": "LinTRZ", "classes": "301", "enfants": "", "parents": "MohTRZmed-NidhTRZl CHTRZOUCH, Ymen CHTRZOUCH", "conn": "2026-09-16T05:11:00"}, {"type": "Élève", "nom": "CHERROUK", "prenom": "TRZnis", "classes": "301", "enfants": "", "parents": "ZTRZynTRZ OTRTRZIH, YTRZssine CHERROUK", "conn": "2026-09-16T17:35:00"}, {"type": "Élève", "nom": "DITRZKHITE", "prenom": "ThiouTRTRZlo", "classes": "301", "enfants": "", "parents": "FTRZtimTRZtTRZ DITRZKHITE, DrTRZmTRZne DITRZKHITE", "conn": "2026-09-16T02:17:00"}, {"type": "Élève", "nom": "FEDOU", "prenom": "Florence", "classes": "301", "enfants": "", "parents": "StéphTRZne FEDOU, JETRZNNE NTRZtTRZchTRZ LTRZNDZI", "conn": "2026-09-16T17:04:00"}, {"type": "Élève", "nom": "FERNTRZNDES DE TRZLMEIDTRZ", "prenom": "EliTRZne", "classes": "301", "enfants": "", "parents": "OrginitTRZ FERNTRZNDES VEIGTRZ", "conn": "2026-09-16T17:36:00"}, {"type": "Élève", "nom": "FILTRZINE", "prenom": "LunTRZ", "classes": "301", "enfants": "", "parents": "Vincent FILTRZINE, Christelle DIERICKX", "conn": "2026-09-16T13:36:00"}, {"type": "Élève", "nom": "GTRZRY", "prenom": "Lou-TRZnne", "classes": "301", "enfants": "", "parents": "CTRZmille GTRZRY, LisciTRZ GTRZRY", "conn": "2026-09-16T11:52:00"}, {"type": "Élève", "nom": "HUCHET", "prenom": "Lenny", "classes": "301", "enfants": "", "parents": "ThomTRZs HUCHET, PTRZuline LUNTRZ", "conn": "2026-09-16T11:08:00"}, {"type": "Élève", "nom": "LTRZUER", "prenom": "Wissem", "classes": "301", "enfants": "", "parents": "StéphTRZne LTRZUER, WTRZhiTRTRZ LTRZUER", "conn": "2026-09-16T15:12:00"}, {"type": "Élève", "nom": "LITRDRI", "prenom": "MohTRZmed", "classes": "301", "enfants": "", "parents": "DTRZlil LITRDRI, WTRZssilTRZ LITRDRI", "conn": "2026-09-16T17:02:00"}, {"type": "Élève", "nom": "LOPES TRORGES", "prenom": "Nedilson", "classes": "301", "enfants": "", "parents": "TRZdilson CTRZRDOSO TRORGES, IneidTRZ DTRZ CONCEICTRZO PEREIRTRZ LOPES", "conn": "2026-09-06T18:40:00"}, {"type": "Élève", "nom": "MTRZMPUNU", "prenom": "MirTRZdi", "classes": "301", "enfants": "", "parents": "Elysee KINKTRZDI KTRZTRUIKU", "conn": "2026-09-14T18:42:00"}, {"type": "Élève", "nom": "MOHTRZMMEDI", "prenom": "Sirine", "classes": "301", "enfants": "", "parents": "TRZTRdelhTRZkim MOHTRZMMEDI, WTRZfTRZ MOHTRZMMEDI", "conn": "2026-09-16T16:46:00"}, {"type": "Élève", "nom": "PTRZCKTRZ", "prenom": "DéTRorTRZh", "classes": "301", "enfants": "", "parents": "Georges PTRZCKTRZ, SylviTRZ TRITRZNY NKENGUE", "conn": "2026-09-16T17:28:00"}, {"type": "Élève", "nom": "QUINQUENEL", "prenom": "Tom", "classes": "301", "enfants": "", "parents": "JohTRZnn QUINQUENEL, ChTRZrlotte VTRZCHEZ", "conn": "2026-09-16T18:11:00"}, {"type": "Élève", "nom": "RTRZTRTRZRIOELISOTRZ", "prenom": "MihTRZjTRZ", "classes": "301", "enfants": "", "parents": "FTRZniry RTRZTRTRZRIOELISOTRZ, NTRZly RTRZTRTRZRIOELISOTRZ", "conn": "2026-09-15T16:00:00"}, {"type": "Élève", "nom": "RTRZD", "prenom": "Eléonore", "classes": "301", "enfants": "", "parents": "ChTRZrTRel RTRZD, TRZdeline RTRZD", "conn": "2026-09-16T15:21:00"}, {"type": "Élève", "nom": "RENTRZULT", "prenom": "TRZrmTRZnd", "classes": "301", "enfants": "", "parents": "MorgTRZne MICHEL, DTRZvid RENTRZULT", "conn": "2026-09-16T16:00:00"}, {"type": "Élève", "nom": "RITRZHI EL IDRISSI", "prenom": "MTRZnel", "classes": "301", "enfants": "", "parents": "LeilTRZ RITRZHI EL IDRISSI, YTRZssine RITRZHI EL IDRISSI", "conn": "2026-09-16T13:41:00"}, {"type": "Élève", "nom": "STRZTR NGUM", "prenom": "RosTRZline", "classes": "301", "enfants": "", "parents": "EvTRZngeline ZOM MEZTRZNG, ThomTRZs STRZTR STRZTR", "conn": "2026-09-15T21:07:00"}, {"type": "Élève", "nom": "SITRTRZCHIR JTRZRTRZY", "prenom": "KTRZïs", "classes": "301", "enfants": "", "parents": "STRZrTRZh JTRZRTRZY", "conn": "2026-09-16T15:34:00"}, {"type": "Élève", "nom": "TTRZTRTRZCHE", "prenom": "TRZssile", "classes": "301", "enfants": "", "parents": "HichTRZm TRENTROUJEMTRZTRZ, LTRZmyTRZTRZ TRENTROUJEMTRZTRZ", "conn": "2026-09-16T06:20:00"}, {"type": "Élève", "nom": "VTRZIRELLES", "prenom": "TRZxel", "classes": "301", "enfants": "", "parents": "SylvTRZin VTRZIRELLES, Emilie LESOURD", "conn": "2026-09-16T17:11:00"}, {"type": "Élève", "nom": "ZITOUNI", "prenom": "Hichem", "classes": "301", "enfants": "", "parents": "Toufik ZITOUNI, TRZminTRZ ZITOUNI", "conn": "2026-09-16T15:21:00"}];
+
+  var HEADER_MAP = {
+    "type":"type", "nom":"nom", "prenom":"prenom",
+    "classes":"classes", "enfants":"enfants", "parents":"parents",
+    "derniere connexion":"conn"
+  };
+
+  var state = {
+    rows: [],
+    refDate: new Date(2026, 8, 10),
+    thEleve: 30,
+    thParent: 60,
+    search: "",
+    classeFilter: "",
+    onlyFlagged: false,
+    sourceFilename: "20260910_exportENT_301Anonyme.xlsx"
+  };
+
+  // ---------- helpers ----------
+  function stripAccents(s){ return String(s == null ? "" : s).normalize("NFD").replace(/[̀-ͯ]/g,""); }
+  function normKey(s){ return stripAccents(s).toLowerCase().trim().replace(/\s+/g," "); }
+  function splitList(s){ return String(s||"").split(",").map(function(x){return x.trim();}).filter(Boolean); }
+  function normalizeEnfantsKey(s){
+    var parts = splitList(s).map(function(x){ return x.replace(/\s+/g," "); });
+    if(!parts.length) return "";
+    return parts.slice().sort().join("|");
+  }
+  function isEleveType(t){ var n = normKey(t); return n.indexOf("eleve") === 0; }
+  function pad2(n){ return (n<10?"0":"")+n; }
+  function toInputDate(d){ return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); }
+  function toFileDate(d){ return ""+d.getFullYear()+pad2(d.getMonth()+1)+pad2(d.getDate()); }
+  function toDisplayDate(d){
+    return pad2(d.getDate())+"/"+pad2(d.getMonth()+1)+"/"+d.getFullYear()+" "+pad2(d.getHours())+":"+pad2(d.getMinutes());
+  }
+  function daysBetween(a,b){
+    var ms = Date.UTC(a.getFullYear(),a.getMonth(),a.getDate()) - Date.UTC(b.getFullYear(),b.getMonth(),b.getDate());
+    return Math.round(ms/86400000);
+  }
+  function parseConn(v){
+    if(v == null || v === "") return null;
+    if(v instanceof Date) return isNaN(v) ? null : v;
+    var d = new Date(v);
+    return isNaN(d) ? null : d;
+  }
+
+  function loadFromSample(){
+    state.rows = SAMPLE_DATA.map(function(r){
+      return {
+        type: r.type, nom: r.nom, prenom: r.prenom, classes: r.classes,
+        enfants: r.enfants, parents: r.parents, conn: parseConn(r.conn)
+      };
+    });
+  }
+
+  function computeFlags(){
+    var thE = Math.max(1, +state.thEleve || 1);
+    var thP = Math.max(1, +state.thParent || 1);
+    state.rows.forEach(function(r){
+      r.classesList = splitList(r.classes);
+      r.isEleve = isEleveType(r.type);
+      r.daysSince = r.conn ? daysBetween(state.refDate, r.conn) : null;
+      var th = r.isEleve ? thE : thP;
+      r.ownStale = !r.conn || r.daysSince > th;
+      r.suivi = 0; r.flagged = false;
+    });
+
+    state.rows.filter(function(r){ return r.isEleve; }).forEach(function(r){
+      if(r.ownStale){ r.suivi = 1; r.flagged = true; }
+    });
+
+    var groups = {};
+    state.rows.filter(function(r){ return !r.isEleve; }).forEach(function(r){
+      r.enfantsKey = normalizeEnfantsKey(r.enfants);
+      if(!r.enfantsKey) return;
+      (groups[r.enfantsKey] = groups[r.enfantsKey] || []).push(r);
+    });
+    Object.keys(groups).forEach(function(k){
+      var g = groups[k];
+      if(g.length === 1){
+        if(g[0].ownStale){ g[0].suivi = 1; g[0].flagged = true; }
+      } else {
+        var allStale = g.every(function(r){ return r.ownStale; });
+        if(allStale) g.forEach(function(r){ r.suivi = 1; r.flagged = true; });
+      }
+    });
+  }
+
+  // ---------- rendering ----------
+  var tbody = document.getElementById("tbody");
+  var classeFilterEl = document.getElementById("classeFilter");
+
+  function refreshClasseOptions(){
+    var set = {};
+    state.rows.forEach(function(r){ r.classesList.forEach(function(c){ set[c]=true; }); });
+    var classes = Object.keys(set).sort(function(a,b){ return a.localeCompare(b, undefined, {numeric:true}); });
+    var current = classeFilterEl.value;
+    classeFilterEl.innerHTML = '<option value="">Toutes les classes</option>' +
+      classes.map(function(c){ return '<option value="'+escapeHtml(c)+'">'+escapeHtml(c)+'</option>'; }).join("");
+    if(classes.indexOf(current) !== -1) classeFilterEl.value = current;
+  }
+
+  function escapeHtml(s){
+    return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  function matchesSearch(r, q){
+    if(!q) return true;
+    var hay = normKey(r.nom + " " + r.prenom);
+    return hay.indexOf(normKey(q)) !== -1;
+  }
+
+  function render(){
+    var q = state.search, cls = state.classeFilter, onlyFlag = state.onlyFlagged;
+    var visible = state.rows.filter(function(r){
+      if(onlyFlag && !r.flagged) return false;
+      if(cls && r.classesList.indexOf(cls) === -1) return false;
+      if(!matchesSearch(r, q)) return false;
+      return true;
+    });
+
+    if(!visible.length){
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Aucune ligne ne correspond aux filtres.</td></tr>';
+    } else {
+      tbody.innerHTML = visible.map(function(r){
+        var connTxt = r.conn ? toDisplayDate(r.conn) : '<span class="dash">jamais</span>';
+        var daysTxt = r.conn ? (r.daysSince + ' j') : '<span class="dash">—</span>';
+        var suiviTxt = r.suivi ? '<span class="suivi-chip">1</span>' : '<span class="dash">—</span>';
+        return '<tr class="'+(r.flagged?'flagged':'')+'">' +
+          '<td><span class="type-chip">'+escapeHtml(r.type)+'</span></td>' +
+          '<td>'+escapeHtml(r.nom)+'</td>' +
+          '<td>'+escapeHtml(r.prenom)+'</td>' +
+          '<td>'+escapeHtml(r.classes)+'</td>' +
+          '<td class="wrap-cell">'+escapeHtml(r.enfants)+'</td>' +
+          '<td class="wrap-cell">'+escapeHtml(r.parents)+'</td>' +
+          '<td class="num">'+connTxt+'</td>' +
+          '<td class="num">'+daysTxt+'</td>' +
+          '<td>'+suiviTxt+'</td>' +
+        '</tr>';
+      }).join("");
+    }
+
+    var total = state.rows.length;
+    var flagged = state.rows.filter(function(r){ return r.flagged; });
+    var eleveFlag = flagged.filter(function(r){ return r.isEleve; }).length;
+    var parentFlag = flagged.length - eleveFlag;
+    var pct = total ? Math.round(flagged.length/total*100) : 0;
+
+    document.getElementById("statTotal").textContent = total;
+    document.getElementById("statTotalSub").textContent = visible.length !== total ? (visible.length + " affichée(s)") : " ";
+    document.getElementById("statFlag").textContent = flagged.length;
+    document.getElementById("statFlagSub").textContent = pct + "% des lignes";
+    document.getElementById("statEleve").textContent = eleveFlag;
+    document.getElementById("statEleveSub").textContent = "sur " + state.rows.filter(function(r){return r.isEleve;}).length + " élèves";
+    document.getElementById("statParent").textContent = parentFlag;
+    document.getElementById("statParentSub").textContent = "sur " + state.rows.filter(function(r){return !r.isEleve;}).length + " parents";
+
+    document.getElementById("footRefDate").textContent = "Référence : " + toInputDate(state.refDate).split("-").reverse().join("/");
+  }
+
+  function recompute(){ computeFlags(); refreshClasseOptions(); render(); }
+
+  // ---------- controls wiring ----------
+  var refDateEl = document.getElementById("refDate");
+  var thEleveEl = document.getElementById("thEleve");
+  var thParentEl = document.getElementById("thParent");
+
+  refDateEl.value = toInputDate(state.refDate);
+  thEleveEl.value = state.thEleve;
+  thParentEl.value = state.thParent;
+
+  refDateEl.addEventListener("change", function(){
+    var parts = refDateEl.value.split("-");
+    if(parts.length === 3){
+      state.refDate = new Date(+parts[0], +parts[1]-1, +parts[2]);
+      recompute();
+    }
+  });
+  thEleveEl.addEventListener("input", function(){ state.thEleve = +thEleveEl.value || 1; recompute(); });
+  thParentEl.addEventListener("input", function(){ state.thParent = +thParentEl.value || 1; recompute(); });
+
+  document.getElementById("search").addEventListener("input", function(e){ state.search = e.target.value; render(); });
+  classeFilterEl.addEventListener("change", function(e){ state.classeFilter = e.target.value; render(); });
+  document.getElementById("onlyFlagged").addEventListener("change", function(e){ state.onlyFlagged = e.target.checked; render(); });
+
+  // ---------- file import ----------
+  var fileInput = document.getElementById("fileInput");
+  var fileDrop = document.getElementById("fileDrop");
+  var sourcePill = document.getElementById("sourceName");
+  var fileDropSub = document.getElementById("fileDropSub");
+
+  function cellDate(v){
+    if(v == null) return null;
+    if(v instanceof Date) return isNaN(v) ? null : v;
+    if(typeof v === "object" && v.result != null) return cellDate(v.result);
+    if(typeof v === "string" && v.trim()){ var d = new Date(v); return isNaN(d) ? null : d; }
+    return null;
+  }
+  function cellText(v){
+    if(v == null) return "";
+    if(v instanceof Date) return v.toISOString();
+    if(typeof v === "object"){
+      if(v.richText) return v.richText.map(function(t){return t.text;}).join("");
+      if(v.text != null) return String(v.text);
+      if(v.result != null) return cellText(v.result);
+      return "";
+    }
+    return String(v);
+  }
+
+  function finishImport(rows, filename){
+    state.rows = rows;
+    state.sourceFilename = filename;
+    sourcePill.textContent = filename;
+    fileDropSub.textContent = rows.length + " lignes chargées";
+
+    var m = filename.match(/(20\d{2})[-_]?(\d{2})[-_]?(\d{2})/);
+    if(m){
+      state.refDate = new Date(+m[1], +m[2]-1, +m[3]);
+      refDateEl.value = toInputDate(state.refDate);
+    }
+    recompute();
+    toast("Fichier importé (" + rows.length + " lignes).");
+  }
+
+  function importXlsx(file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      var wb = new ExcelJS.Workbook();
+      wb.xlsx.load(reader.result).then(function(){
+        var ws = wb.worksheets[0];
+        if(!ws){ toast("Impossible de lire ce fichier."); return; }
+        var headerRow = ws.getRow(1);
+        var colMap = {};
+        headerRow.eachCell(function(cell, colNumber){
+          var key = normKey(cellText(cell.value));
+          if(HEADER_MAP[key]) colMap[HEADER_MAP[key]] = colNumber;
+        });
+        if(!colMap.nom || !colMap.type){
+          toast("Colonnes attendues introuvables (Type, Nom…).");
+          return;
+        }
+        var rows = [];
+        ws.eachRow(function(row, rowNumber){
+          if(rowNumber === 1) return;
+          function get(f){ return colMap[f] ? row.getCell(colMap[f]).value : null; }
+          var typeRaw = cellText(get("type"));
+          var nom = cellText(get("nom"));
+          if(!typeRaw && !nom) return;
+          rows.push({
+            type: typeRaw,
+            nom: nom,
+            prenom: cellText(get("prenom")),
+            classes: cellText(get("classes")),
+            enfants: cellText(get("enfants")),
+            parents: cellText(get("parents")),
+            conn: cellDate(get("conn"))
+          });
+        });
+        finishImport(rows, file.name);
+      }).catch(function(err){
+        console.error(err);
+        toast("Échec de lecture du fichier .xlsx.");
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // ---------- CSV parsing ----------
+  function parseDelimited(text, delim){
+    var rows = [], row = [], field = "", inQuotes = false;
+    for(var i=0; i<text.length; i++){
+      var c = text[i];
+      if(inQuotes){
+        if(c === '"'){
+          if(text[i+1] === '"'){ field += '"'; i++; } else { inQuotes = false; }
+        } else field += c;
+      } else if(c === '"'){
+        inQuotes = true;
+      } else if(c === delim){
+        row.push(field); field = "";
+      } else if(c === "\n"){
+        row.push(field); rows.push(row); row = []; field = "";
+      } else if(c === "\r"){
+        if(text[i+1] !== "\n"){ row.push(field); rows.push(row); row = []; field = ""; }
+      } else field += c;
+    }
+    if(field.length || row.length){ row.push(field); rows.push(row); }
+    return rows.filter(function(r){ return !(r.length === 1 && r[0] === ""); });
+  }
+  function pickDelimiter(text){
+    var headerLine = (text.split(/\r\n|\n|\r/)[0] || "");
+    var best = ",", bestScore = -1;
+    [",",";","\t"].forEach(function(d){
+      var cells = parseDelimited(headerLine, d)[0] || [];
+      var score = cells.reduce(function(acc,c){ return acc + (HEADER_MAP[normKey(c)] ? 1 : 0); }, 0);
+      if(score > bestScore){ bestScore = score; best = d; }
+    });
+    return best;
+  }
+  function parseFlexDate(s){
+    if(!s) return null;
+    s = String(s).trim();
+    if(!s) return null;
+    var m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+    if(m) return new Date(+m[3], +m[2]-1, +m[1], m[4]?+m[4]:0, m[5]?+m[5]:0, m[6]?+m[6]:0);
+    var m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if(m2) return new Date(+m2[1], +m2[2]-1, +m2[3], m2[4]?+m2[4]:0, m2[5]?+m2[5]:0, m2[6]?+m2[6]:0);
+    var d = new Date(s);
+    return isNaN(d) ? null : d;
+  }
+
+  function importCsv(file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      var text = String(reader.result).replace(/^﻿/, "");
+      var delim = pickDelimiter(text);
+      var table = parseDelimited(text, delim);
+      if(!table.length){ toast("Fichier CSV vide."); return; }
+      var header = table[0];
+      var colMap = {};
+      header.forEach(function(h, idx){
+        var key = normKey(h);
+        if(HEADER_MAP[key]) colMap[HEADER_MAP[key]] = idx;
+      });
+      if(colMap.nom == null || colMap.type == null){
+        toast("Colonnes attendues introuvables (Type, Nom…).");
+        return;
+      }
+      var rows = [];
+      for(var i=1; i<table.length; i++){
+        var rec = table[i];
+        function get(f){ var idx = colMap[f]; return idx == null ? "" : (rec[idx] || "").trim(); }
+        var typeRaw = get("type"), nom = get("nom");
+        if(!typeRaw && !nom) continue;
+        rows.push({
+          type: typeRaw, nom: nom, prenom: get("prenom"), classes: get("classes"),
+          enfants: get("enfants"), parents: get("parents"), conn: parseFlexDate(get("conn"))
+        });
+      }
+      finishImport(rows, file.name);
+    };
+    reader.onerror = function(){ toast("Échec de lecture du fichier .csv."); };
+    reader.readAsText(file, "UTF-8");
+  }
+
+  function importFile(file){
+    var ext = (file.name.split(".").pop() || "").toLowerCase();
+    if(ext === "csv") importCsv(file);
+    else importXlsx(file);
+  }
+
+  fileInput.addEventListener("change", function(){
+    if(fileInput.files && fileInput.files[0]) importFile(fileInput.files[0]);
+  });
+  ["dragover","dragenter"].forEach(function(evt){
+    fileDrop.addEventListener(evt, function(e){ e.preventDefault(); fileDrop.classList.add("dragover"); });
+  });
+  ["dragleave","drop"].forEach(function(evt){
+    fileDrop.addEventListener(evt, function(e){ fileDrop.classList.remove("dragover"); });
+  });
+  fileDrop.addEventListener("drop", function(e){
+    e.preventDefault();
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if(f) importFile(f);
+  });
+
+  // ---------- toast ----------
+  var toastEl = document.getElementById("toast");
+  var toastTimer = null;
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 3200);
+  }
+
+  // ---------- browser download ----------
+  function saveBlob(filename, blob){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+
+  var ORANGE_ARGB = "FFE08325";
+  var HEADER_ARGB = "FFEEF1F2";
+
+  function buildWorkbookSheet(wb, name, rows){
+    var ws = wb.addWorksheet(name);
+    ws.columns = [
+      {header:"Type", key:"type", width:10},
+      {header:"Nom", key:"nom", width:20},
+      {header:"Prénom", key:"prenom", width:18},
+      {header:"Classes", key:"classes", width:14},
+      {header:"Enfants", key:"enfants", width:38},
+      {header:"Parents", key:"parents", width:34},
+      {header:"Dernière connexion", key:"conn", width:20},
+      {header:"Suivi", key:"suivi", width:8}
+    ];
+    var headerRow = ws.getRow(1);
+    headerRow.font = {bold:true};
+    headerRow.eachCell(function(cell){ cell.fill = {type:"pattern", pattern:"solid", fgColor:{argb:HEADER_ARGB}}; });
+    rows.forEach(function(r){
+      var row = ws.addRow({
+        type:r.type, nom:r.nom, prenom:r.prenom, classes:r.classes,
+        enfants:r.enfants, parents:r.parents,
+        conn: r.conn || null, suivi: r.suivi || 0
+      });
+      if(r.conn) row.getCell("conn").numFmt = "dd/mm/yyyy hh:mm";
+      if(r.flagged){
+        row.eachCell({includeEmpty:true}, function(cell){
+          cell.fill = {type:"pattern", pattern:"solid", fgColor:{argb:ORANGE_ARGB}};
+        });
+      }
+    });
+    ws.views = [{state:"frozen", ySplit:1}];
+    return ws;
+  }
+
+  document.getElementById("btnExportAll").addEventListener("click", function(){
+    var btn = this;
+    if(!state.rows.length){ toast("Aucune donnée à exporter."); return; }
+    btn.disabled = true;
+    var wb = new ExcelJS.Workbook();
+    buildWorkbookSheet(wb, "Suivi ENT", state.rows);
+    wb.xlsx.writeBuffer().then(function(buf){
+      var blob = new Blob([buf], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+      var name = "suivi_ENT_complet_" + toFileDate(state.refDate) + ".xlsx";
+      saveBlob(name, blob);
+      toast("Export téléchargé.");
+    }).catch(function(err){
+      console.error(err); toast("Échec de l'export.");
+    }).finally(function(){ btn.disabled = false; });
+  });
+
+  document.getElementById("btnExportClasse").addEventListener("click", function(){
+    var btn = this;
+    if(!state.rows.length){ toast("Aucune donnée à exporter."); return; }
+    if(typeof JSZip === "undefined"){ toast("Bibliothèque de compression indisponible."); return; }
+    btn.disabled = true;
+    var classSet = {};
+    state.rows.forEach(function(r){ r.classesList.forEach(function(c){ classSet[c]=true; }); });
+    var classes = Object.keys(classSet).sort(function(a,b){ return a.localeCompare(b, undefined, {numeric:true}); });
+    if(!classes.length){ toast("Aucune classe détectée."); btn.disabled=false; return; }
+    var zip = new JSZip();
+    var chain = Promise.resolve();
+    classes.forEach(function(cls){
+      chain = chain.then(function(){
+        var wb = new ExcelJS.Workbook();
+        var rows = state.rows.filter(function(r){ return r.classesList.indexOf(cls) !== -1; });
+        buildWorkbookSheet(wb, "Classe " + cls, rows);
+        return wb.xlsx.writeBuffer().then(function(buf){
+          zip.file("suivi_ENT_" + cls + ".xlsx", buf);
+        });
+      });
+    });
+    chain.then(function(){ return zip.generateAsync({type:"blob"}); })
+      .then(function(blob){
+        var name = "suivi_ENT_par_classe_" + toFileDate(state.refDate) + ".zip";
+        saveBlob(name, blob);
+        toast("Export par classe téléchargé.");
+      }).catch(function(err){
+        console.error(err); toast("Échec de l'export par classe.");
+      }).finally(function(){ btn.disabled = false; });
+  });
+
+  // ---------- boot ----------
+  loadFromSample();
+  recompute();
+})();
+</script>
+</body>
+</html>
